@@ -2,7 +2,10 @@ package com.github.nkzawa.socketio.androidchat;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
@@ -19,13 +22,25 @@ import android.widget.Toast;
 import com.github.nkzawa.emitter.Emitter;
 import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+//import org.apache.commons.codec.binary.Base64;
+//import org.apache.commons.codec.binary.Hex;
+import android.util.Base64;
 
 /**
  * A chat fragment containing messages view and input form.
@@ -44,6 +59,14 @@ public class MainFragment extends Fragment {
     private Handler mTypingHandler = new Handler();
     private String mUsername = "hiroshi";
     private Socket mSocket;
+    String path;
+    FileInputStream fis;
+    byte[] bytes;
+    ByteBuffer buffer;
+    String string_utf8;
+    String[] array = new String[50];
+    int ABS_MT_TRACKING_ID = 1;
+    Intent intent;
     {
         try {
             mSocket = IO.socket("http://157.7.222.223:3000");
@@ -70,7 +93,8 @@ public class MainFragment extends Fragment {
 
         mSocket.on(Socket.EVENT_CONNECT_ERROR, onConnectError);
         mSocket.on(Socket.EVENT_CONNECT_TIMEOUT, onConnectError);
-        mSocket.on("new message", onNewMessage);
+        //mSocket.on("new message", onNewMessage);
+        mSocket.on("S_to_C_message", onNewMessage);
         mSocket.on("user joined", onUserJoined);
         mSocket.on("user left", onUserLeft);
         mSocket.on("typing", onTyping);
@@ -78,6 +102,8 @@ public class MainFragment extends Fragment {
         mSocket.connect();
 
         //startSignIn();
+
+
     }
 
     @Override
@@ -237,19 +263,70 @@ public class MainFragment extends Fragment {
             return;
         }
 
+        String filepath = Environment.getExternalStorageDirectory().getPath() + "/screenshot/picture.png";
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(filepath, options);
+
+        int scaleW = options.outWidth / 760 + 1;
+        int scaleH = options.outHeight / 840  + 1;
+
+        int scale = Math.max(scaleW, scaleH);
+
+        options.inJustDecodeBounds = false;
+
+        options.inSampleSize = scale;
+
+        Bitmap image = BitmapFactory.decodeFile(filepath, options);
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        image.compress(Bitmap.CompressFormat.PNG, 100, bos);
+        byte[] bArray = bos.toByteArray();
+        String image64 = Base64.encodeToString(bArray, Base64.DEFAULT);
+        //String imageBinary = "data:image/png;base64,"+image64;
+        String imageBinary = "data:image/png;base64,"+image64;
+
+        /*path = Environment.getExternalStorageDirectory().getPath()+"/screenshot/editedpicture.jpg";
+        try {
+            fis = new FileInputStream(path);
+            FileChannel channel = fis.getChannel();
+            buffer = ByteBuffer.allocate((int) channel.size());
+            channel.read(buffer);
+            buffer.clear();
+            bytes = new byte[buffer.capacity()];
+            buffer.get(bytes);
+            channel.close();
+            fis.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            string_utf8 = new String(bytes,"UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
+        byte[] encoded = Base64.encodeBase64(string_utf8.getBytes());//エンコード処理*/
+
+
         mInputMessageView.setText("");
-        addMessage(mUsername, message);
+        //addMessage(mUsername, message);
+        //addMessage(mUsername, string_utf8);
 
         JSONObject json = new JSONObject();
         try {
-            json.put("value", message);
+            json.put("value", imageBinary);
         } catch (JSONException e) {
             e.printStackTrace();
         }
 
         // perform the sending message attempt.
-        mSocket.emit("C_to_S_message", json);
-        
+        //mSocket.emit("C_to_S_message", json);
+        mSocket.emit("C_to_S_broadcast", json);
     }
 
     private void startSignIn() {
@@ -291,15 +368,91 @@ public class MainFragment extends Fragment {
                     JSONObject data = (JSONObject) args[0];
                     String username;
                     String message;
+
+
                     try {
-                        username = data.getString("username");
-                        message = data.getString("message");
+                        //username = data.getString("username");//送信側で未定義のためコメントアウト
+                        message = data.getString("value");
                     } catch (JSONException e) {
                         return;
                     }
+                    //StringBuilder sb = new StringBuilder();
 
-                    removeTyping(username);
-                    addMessage(username, message);
+                    /*String message1 = "sendevent /dev/input/event0 3 57 93\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 58 29\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 53 956\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 54 2180\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 0 0 0\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 57 4294967295\n" +
+                            "sleep 0.064\n" +
+                            "sendevent /dev/input/event0 0 0 0\n" +
+                            "sleep 0.000";*/
+
+                    double ratio = 1.2;
+                    String crlf = System.getProperty("line.separator");
+                    //array = message.split("\n");
+                    array = message.split(crlf);
+                    String x = array[0];
+                    int xx = Integer.parseInt(x,16);
+                    String xxx = Integer.toString((int) (xx * ratio));
+                    String y = array[1];
+                    int yy = Integer.parseInt(y,16);
+                    String yyy = Integer.toString((int) (yy * ratio));
+
+                    String message1 = "sendevent /dev/input/event0 3 57 " + ABS_MT_TRACKING_ID + "\n" +
+                                    "sleep 0.000\n" +
+                                    "sendevent /dev/input/event0 3 48 10\n" +
+                                    "sleep 0.000\n" +
+                                    "sendevent /dev/input/event0 3 58 29\n" +
+                                    "sleep 0.000\n" +
+                                    "sendevent /dev/input/event0 3 53 " + xxx + "\n" +
+                                    "sleep 0.000\n" +
+                                    "sendevent /dev/input/event0 3 54 " + yyy + "\n" +
+                                    "sleep 0.000\n" +
+                                    "sendevent /dev/input/event0 0 0 0\n" +
+                                    "sleep 0.000\n" +
+                                    "sendevent /dev/input/event0 3 57 4294967295\n" +
+                                    "sleep 0.064\n" +
+                                    "sendevent /dev/input/event0 0 0 0\n" +
+                                    "sleep 0.000\n";
+
+
+
+                    Process p = null;
+
+                    try {
+                        p = Runtime.getRuntime().exec("su");
+                        DataOutputStream dos = new DataOutputStream(p.getOutputStream());
+                        //for(int i=0;i<array.length;i++){
+
+
+
+                            //dos.writeBytes(array[i]);
+                            //dos.writeBytes(message);//messageだと実行される
+                            dos.writeBytes(message1);
+                            //dos.flush();
+                            //Toast.makeText(getActivity().getApplicationContext(),array[i], Toast.LENGTH_LONG).show();
+
+
+
+                        //}// 押す
+                        dos.flush();
+                        dos.close();
+                    } catch (IOException e) {
+                        Toast.makeText(getActivity().getApplicationContext(),"er", Toast.LENGTH_LONG).show();
+                        e.printStackTrace();
+                    }
+
+
+
+                    //removeTyping(username);//送信側で未定義のためコメントアウト
+                    addMessage("anonymous"/*username*/,message1);//messageだと実行される
+                    ABS_MT_TRACKING_ID++;
                 }
             });
         }

@@ -1,26 +1,19 @@
 <LinearLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="horizontal"
         android:paddingTop="@dimen/spacing">
 
-    <TextView
-            android:id="@+id/username"
-            style="?android:textAppearanceMedium"
-            android:textColor="?android:textColorPrimary"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:singleLine="true"
-            android:textStyle="bold"/>
+
     <TextView
             android:id="@+id/message"
             style="?android:textAppearanceMedium"
             android:textColor="?android:textColorPrimary"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:paddingLeft="@dimen/spacing"
             android:paddingRight="@dimen/spacing"
-            android:singleLine="true"/>
+            />
 
 </LinearLayout>

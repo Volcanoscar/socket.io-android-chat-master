@@ -33,8 +33,10 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.android.support:appcompat-v7:21.0.+'
     compile 'com.android.support:recyclerview-v7:21.0.+'
     compile 'com.github.nkzawa:socket.io-client:0.3.0'
+    compile 'commons-codec:commons-codec:1.10'
+    compile project(':mysql-connector-java-5.1.34-bin')
 }
