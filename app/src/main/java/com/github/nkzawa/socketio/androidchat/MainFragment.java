@@ -101,6 +101,8 @@ public class MainFragment extends Fragment {
         mSocket.on("stop typing", onStopTyping);
         mSocket.connect();
 
+
+
         //startSignIn();
 
 
@@ -399,9 +401,11 @@ public class MainFragment extends Fragment {
                     array = message.split(crlf);
                     String x = array[0];
                     int xx = Integer.parseInt(x,16);
+                    //int xxxx = xx * 2;
                     String xxx = Integer.toString((int) (xx * ratio));
                     String y = array[1];
                     int yy = Integer.parseInt(y,16);
+                    //int yyyy = yy * 2;
                     String yyy = Integer.toString((int) (yy * ratio));
 
                     String message1 = "sendevent /dev/input/event0 3 57 " + ABS_MT_TRACKING_ID + "\n" +

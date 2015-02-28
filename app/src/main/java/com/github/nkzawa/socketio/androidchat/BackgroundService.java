@@ -9,7 +9,9 @@ import android.os.IBinder;
 import android.os.SystemClock;
 import android.util.Base64;
 import android.util.Log;
+import android.widget.Toast;
 
+import com.github.nkzawa.emitter.Emitter;
 import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
 
@@ -26,9 +28,11 @@ import java.net.URISyntaxException;
  */
 public class BackgroundService extends Service {
 
-    Thread thread;
+    Thread sendthread;
+    Thread receivethread;
     boolean b = true;
     private Socket mSocket;
+
 
     {
         try {
@@ -38,6 +42,7 @@ public class BackgroundService extends Service {
         }
     }
 
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -45,7 +50,9 @@ public class BackgroundService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-        thread = new Thread(new Runnable() {
+        mSocket.on("S_to_C_message", onNewMessage);
+
+        sendthread = new Thread(new Runnable() {
             @Override
             public void run() {
                 Log.d("prereturn", "thread");
@@ -95,14 +102,114 @@ public class BackgroundService extends Service {
                         e.printStackTrace();
                     }
                     mSocket.emit("C_to_S_broadcast", json);
-                    SystemClock.sleep(2000);
+                    //SystemClock.sleep(1000);
                 }
 
             }
         });
-        thread.start();
+        sendthread.start();
         return START_STICKY;
     }
 
+    private Emitter.Listener onNewMessage = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+             new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject data = (JSONObject) args[0];
+                    String username;
+                    String message;
+                    String[] array = new String[30];
+                    int ABS_MT_TRACKING_ID = 1;
 
+                    try {
+                        //username = data.getString("username");//送信側で未定義のためコメントアウト
+                        message = data.getString("value");
+                    } catch (JSONException e) {
+                        return;
+                    }
+                    //StringBuilder sb = new StringBuilder();
+
+                    /*String message1 = "sendevent /dev/input/event0 3 57 93\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 58 29\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 53 956\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 54 2180\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 0 0 0\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 57 4294967295\n" +
+                            "sleep 0.064\n" +
+                            "sendevent /dev/input/event0 0 0 0\n" +
+                            "sleep 0.000";*/
+
+                    double ratio = 1.2;
+                    String crlf = System.getProperty("line.separator");
+                    //array = message.split("\n");
+                    array = message.split(crlf);
+                    String x = array[0];
+                    int xx = Integer.parseInt(x,16);
+                    //int xx = xx * 2;
+                    String xxx = Integer.toString((int) (xx * ratio));
+                    String y = array[1];
+                    int yy = Integer.parseInt(y,16);
+                    //int yyyy = yy * 2;
+                    String yyy = Integer.toString((int) (yy * ratio));
+
+                    String message1 = "sendevent /dev/input/event0 3 57 " + ABS_MT_TRACKING_ID + "\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 48 10\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 58 29\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 53 " + xxx + "\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 54 " + yyy + "\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 0 0 0\n" +
+                            "sleep 0.000\n" +
+                            "sendevent /dev/input/event0 3 57 4294967295\n" +
+                            "sleep 0.064\n" +
+                            "sendevent /dev/input/event0 0 0 0\n" +
+                            "sleep 0.000\n";
+
+
+
+                    Process p = null;
+
+                    try {
+                        p = Runtime.getRuntime().exec("su");
+                        DataOutputStream dos = new DataOutputStream(p.getOutputStream());
+                        //for(int i=0;i<array.length;i++){
+
+
+
+                        //dos.writeBytes(array[i]);
+                        //dos.writeBytes(message);//messageだと実行される
+                        dos.writeBytes(message1);
+                        //dos.flush();
+                        //Toast.makeText(getActivity().getApplicationContext(),array[i], Toast.LENGTH_LONG).show();
+
+
+
+                        //}// 押す
+                        dos.flush();
+                        dos.close();
+                    } catch (IOException e) {
+                        //Toast.makeText(getActivity().getApplicationContext(), "er", Toast.LENGTH_LONG).show();
+                        e.printStackTrace();
+                    }
+
+
+
+                    //removeTyping(username);//送信側で未定義のためコメントアウト
+                    //addMessage("anonymous"/*username*/,message1);//messageだと実行される
+                    ABS_MT_TRACKING_ID++;
+                }
+            });
+        }
+    };
 }
