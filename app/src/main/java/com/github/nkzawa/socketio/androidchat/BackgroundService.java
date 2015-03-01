@@ -50,8 +50,13 @@ public class BackgroundService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
+        try {
+            mSocket = IO.socket("http://157.7.222.223:3000");
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
         mSocket.on("S_to_C_message", onNewMessage);
-
+        mSocket.connect();
         sendthread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -63,7 +68,7 @@ public class BackgroundService extends Service {
                         DataOutputStream dos = new DataOutputStream(p.getOutputStream());
                         dos.writeBytes("screencap -p /sdcard/screenshot/picture.png\n"); // 押す
                         dos.flush();
-                        SystemClock.sleep(2000);
+                        SystemClock.sleep(1000);
                         p.destroy();
                         Log.d("prereturn", "aftersu");
 
@@ -86,9 +91,11 @@ public class BackgroundService extends Service {
                     options.inSampleSize = scale;
 
                     Bitmap image = BitmapFactory.decodeFile(filepath, options);
-
+                    Log.d("prereturn",filepath );
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    image.compress(Bitmap.CompressFormat.PNG, 100, bos);
+                    if(image != null){
+                        image.compress(Bitmap.CompressFormat.PNG, 100, bos);
+                    }
                     byte[] bArray = bos.toByteArray();
                     String image64 = Base64.encodeToString(bArray, Base64.DEFAULT);
                     //String imageBinary = "data:image/png;base64,"+image64;
@@ -108,13 +115,13 @@ public class BackgroundService extends Service {
             }
         });
         sendthread.start();
-        return START_STICKY;
+        return START_REDELIVER_INTENT;
     }
 
     private Emitter.Listener onNewMessage = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
-             new Thread(new Runnable() {
+             receivethread = new Thread(new Runnable() {
                 @Override
                 public void run() {
                     JSONObject data = (JSONObject) args[0];
