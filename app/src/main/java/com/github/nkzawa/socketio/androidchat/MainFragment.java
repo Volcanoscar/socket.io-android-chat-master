@@ -70,7 +70,15 @@ public class MainFragment extends Fragment {
     int ABS_MT_TRACKING_ID = 1;
     Intent intent;
     Thread sendthread;
-    boolean b = true;
+    boolean b;
+    boolean c = true;
+    //image送信用
+    Bitmap image;
+    ByteArrayOutputStream bos;
+    byte[] bArray;
+    String image64;
+    String imageBinary;
+
     {
         try {
             mSocket = IO.socket("http://157.7.222.223:3000");
@@ -99,6 +107,7 @@ public class MainFragment extends Fragment {
         mSocket.on(Socket.EVENT_CONNECT_TIMEOUT, onConnectError);
         //mSocket.on("new message", onNewMessage);
         mSocket.on("S_to_C_message", onNewMessage);
+        mSocket.on("S_to_C_message_log_request", onNewMessage_log);
         mSocket.on("user joined", onUserJoined);
         mSocket.on("user left", onUserLeft);
         mSocket.on("typing", onTyping);
@@ -112,49 +121,61 @@ public class MainFragment extends Fragment {
         sendthread = new Thread(new Runnable() {
             @Override
             public void run() {
+                JSONObject json = new JSONObject();
+                //image = Bitmap.createBitmap(600, 960, Bitmap.Config.ALPHA_8);
                 Log.d("prereturn", "thread");
+                b = true;
                 while(b){
-                    try {
+                    if(c){
+                        try {
 
-                        Process p = Runtime.getRuntime().exec("su");
-                        DataOutputStream dos = new DataOutputStream(p.getOutputStream());
-                        dos.writeBytes("screencap -p /sdcard/screenshot/picture.png\n"); // 押す
-                        dos.flush();
-                        SystemClock.sleep(500);
-                        p.destroy();
-                        Log.d("prereturn", "aftersu");
+                            Process p = Runtime.getRuntime().exec("su");
+                            DataOutputStream dos = new DataOutputStream(p.getOutputStream());
+                            dos.writeBytes("screencap -p /sdcard/screenshot/picture.png\n"); // 押す
+                            dos.flush();
+                            SystemClock.sleep(300);
+                            p.destroy();
+                            Log.d("prereturn", "aftersu");
 
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
+
                     String filepath = Environment.getExternalStorageDirectory().getPath() + "/screenshot/picture.png";
 
                     BitmapFactory.Options options = new BitmapFactory.Options();
-                    options.inJustDecodeBounds = true;
-                    BitmapFactory.decodeFile(filepath, options);
+                    //options.inJustDecodeBounds = true;
+                    //BitmapFactory.decodeFile(filepath, options);
 
-                    int scaleW = options.outWidth / 760 + 1;
-                    int scaleH = options.outHeight / 840  + 1;
+                    //int scaleW = options.outWidth / 600;
+                    //int scaleH = options.outHeight / 960;
 
-                    int scale = Math.max(scaleW, scaleH);
+                    //int scale = Math.max(scaleW, scaleH);
 
                     options.inJustDecodeBounds = false;
+                    options.inPreferredConfig = Bitmap.Config.ALPHA_8;
+                    options.inSampleSize = 4;
 
-                    options.inSampleSize = scale;
+                    image = BitmapFactory.decodeFile(filepath, options);
 
-                    Bitmap image = BitmapFactory.decodeFile(filepath, options);
                     Log.d("prereturn",filepath );
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
                     if(image != null){
-                        image.compress(Bitmap.CompressFormat.PNG, 100, bos);
+                        image.compress(Bitmap.CompressFormat.PNG, 0, bos);
+                        c = true;
+                    }else{
+                        c = false;
+                        SystemClock.sleep(300);
+
                     }
-                    byte[] bArray = bos.toByteArray();
-                    String image64 = Base64.encodeToString(bArray, Base64.DEFAULT);
+                    bArray = bos.toByteArray();
+                    image64 = Base64.encodeToString(bArray, Base64.DEFAULT);
                     //String imageBinary = "data:image/png;base64,"+image64;
-                    String imageBinary = "data:image/png;base64,"+image64;
+                    imageBinary = "data:image/png;base64,"+image64;
                     Log.d("prereturn", "afteredit");
 
-                    JSONObject json = new JSONObject();
+
                     try {
                         json.put("value", imageBinary);
                     } catch (JSONException e) {
@@ -162,6 +183,8 @@ public class MainFragment extends Fragment {
                     }
                     mSocket.emit("C_to_S_broadcast", json);
                     //SystemClock.sleep(1000);
+
+                    image = null;
                 }
 
             }
@@ -439,26 +462,11 @@ public class MainFragment extends Fragment {
                     } catch (JSONException e) {
                         return;
                     }
-                    //StringBuilder sb = new StringBuilder();
 
-                    /*String message1 = "sendevent /dev/input/event0 3 57 93\n" +
-                            "sleep 0.000\n" +
-                            "sendevent /dev/input/event0 3 58 29\n" +
-                            "sleep 0.000\n" +
-                            "sendevent /dev/input/event0 3 53 956\n" +
-                            "sleep 0.000\n" +
-                            "sendevent /dev/input/event0 3 54 2180\n" +
-                            "sleep 0.000\n" +
-                            "sendevent /dev/input/event0 0 0 0\n" +
-                            "sleep 0.000\n" +
-                            "sendevent /dev/input/event0 3 57 4294967295\n" +
-                            "sleep 0.064\n" +
-                            "sendevent /dev/input/event0 0 0 0\n" +
-                            "sleep 0.000";*/
                     if(message.length() < 20 || message.length()>1) {
                         double ratio = 1.2;
                         String crlf = System.getProperty("line.separator");
-                        //array = message.split("\n");
+
                         array = message.split(crlf);
                         String x = array[0];
                         int xx = Integer.parseInt(x, 16);
@@ -470,19 +478,19 @@ public class MainFragment extends Fragment {
                         String yyy = Integer.toString((int) (yy * ratio));
 
                         String message1 = "sendevent /dev/input/event0 3 57 " + ABS_MT_TRACKING_ID + "\n" +
-                                "sleep 0.000\n" +
+                                //"sleep 0.000\n" +
                                 "sendevent /dev/input/event0 3 48 10\n" +
-                                "sleep 0.000\n" +
+                                //"sleep 0.000\n" +
                                 "sendevent /dev/input/event0 3 58 29\n" +
-                                "sleep 0.000\n" +
+                                //"sleep 0.000\n" +
                                 "sendevent /dev/input/event0 3 53 " + xxx + "\n" +
-                                "sleep 0.000\n" +
+                                //"sleep 0.000\n" +
                                 "sendevent /dev/input/event0 3 54 " + yyy + "\n" +
-                                "sleep 0.000\n" +
+                                //"sleep 0.000\n" +
                                 "sendevent /dev/input/event0 0 0 0\n" +
-                                "sleep 0.000\n" +
+                                //"sleep 0.000\n" +
                                 "sendevent /dev/input/event0 3 57 4294967295\n" +
-                                "sleep 0.064\n" +
+                                //"sleep 0.064\n" +
                                 "sendevent /dev/input/event0 0 0 0\n" +
                                 "sleep 0.000\n";
 
@@ -515,6 +523,64 @@ public class MainFragment extends Fragment {
                         addMessage("anonymous"/*username*/, message1);//messageだと実行される
                         ABS_MT_TRACKING_ID++;
                     }
+                }
+            });
+        }
+    };
+
+    private Emitter.Listener onNewMessage_log = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject data = (JSONObject) args[0];
+                    String keycode;
+                    int log;
+                    Process p;
+                    Log.d("logemitter", data.toString());
+                    try {
+                        keycode = data.getString("value");
+
+                        //log = data.getInt("order");
+                    } catch (JSONException e) {
+                        return;
+                    }
+                    Log.d("logemitter2",keycode);
+
+                    if(keycode.equals("right")) {
+                        try {
+                            Log.d("logemitter2", "keycode");
+                            p = Runtime.getRuntime().exec("su");
+                            DataOutputStream dos = new DataOutputStream(p.getOutputStream());
+                            dos.writeBytes("input touchscreen swipe 500 500 1000 500 100\n");
+
+                            dos.flush();
+                            //dos.close();
+                            Log.d("logemitter2", "finishflush");
+                        } catch (IOException e) {
+                            Toast.makeText(getActivity().getApplicationContext(), "er", Toast.LENGTH_LONG).show();
+                            e.printStackTrace();
+                        }
+                    }else if(keycode.equals("left")){
+
+                        try {
+                            p = Runtime.getRuntime().exec("su");
+                            DataOutputStream dos = new DataOutputStream(p.getOutputStream());
+                            dos.writeBytes("input touchscreen swipe 500 500 100 500 100\n");
+
+                            dos.flush();
+                            dos.close();
+                        } catch (IOException e) {
+                            Toast.makeText(getActivity().getApplicationContext(), "er", Toast.LENGTH_LONG).show();
+                            e.printStackTrace();
+                        }
+                    }else if(keycode.equals("stop")){
+                        b = false;
+                    }
+
+
+
                 }
             });
         }
